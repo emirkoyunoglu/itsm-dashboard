@@ -1,0 +1,40 @@
+/* ─── Chart Card ─────────────────────────────────────────────────────────── */
+.chart-card {
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+}
+
+.chart-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+
+.chart-card-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chart-card-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.chart-card-subtitle {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.chart-card-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.chart-card-body {
+  flex: 1;
+  min-height: 0;
+}

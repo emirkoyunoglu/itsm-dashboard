@@ -1,0 +1,114 @@
+/* ─── Reports Page ───────────────────────────────────────────────────────── */
+.reports-page { max-width: 1400px; }
+
+.report-header-actions {
+  display: flex; align-items: center; gap: 12px;
+}
+
+.report-date-badge {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 16px; background: var(--bg-glass);
+  border: 1px solid var(--border-glass); border-radius: var(--radius-full);
+  font-size: 0.85rem; color: var(--text-secondary); font-weight: 500;
+}
+
+.pdf-export-btn {
+  padding: 10px 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.pdf-export-btn:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+.btn-spinner {
+  width: 14px; height: 14px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+/* PDF only header (hidden on screen, visible in PDF) */
+.pdf-only-header {
+  display: none;
+  text-align: center;
+  padding: 20px 0 16px;
+  border-bottom: 2px solid var(--border-glass);
+  margin-bottom: 20px;
+}
+.pdf-only-header h1 {
+  font-size: 1.3rem;
+  color: var(--text-primary);
+  -webkit-text-fill-color: var(--text-primary);
+  background: none;
+}
+.pdf-only-header p {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+/* Executive Summary */
+.exec-summary { padding: 28px; }
+.exec-title { font-size: 1.1rem; margin-bottom: 20px; color: var(--text-primary); }
+.exec-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 20px; }
+.exec-item { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 12px; background: var(--bg-glass); border-radius: var(--radius-md); border: 1px solid var(--border-glass); }
+.exec-value { font-size: 1.6rem; font-weight: 800; line-height: 1; color: var(--text-primary); }
+.exec-label { font-size: 0.7rem; color: var(--text-muted); margin-top: 6px; text-transform: uppercase; letter-spacing: 0.04em; }
+.text-emerald { color: var(--accent-emerald) !important; }
+.text-cyan { color: var(--accent-cyan) !important; }
+.text-amber { color: var(--accent-amber) !important; }
+.text-rose { color: var(--accent-rose) !important; }
+
+/* Section Title */
+.section-title { font-size: 1.1rem; margin-bottom: 16px; color: var(--text-primary); }
+
+/* Insights */
+.insights-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+.insight-card { padding: 18px; display: flex; gap: 14px; align-items: flex-start; }
+.insight-warning { border-left: 3px solid var(--accent-amber); }
+.insight-success { border-left: 3px solid var(--accent-emerald); }
+.insight-info { border-left: 3px solid var(--accent-cyan); }
+.insight-icon { font-size: 1.4rem; flex-shrink: 0; margin-top: 2px; }
+.insight-content { flex: 1; }
+.insight-title { font-size: 0.9rem; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
+.insight-desc { font-size: 0.82rem; color: var(--text-secondary); line-height: 1.5; }
+
+/* Tooltip */
+.custom-tooltip { background: var(--tooltip-bg, rgba(15,23,42,0.95)); backdrop-filter: blur(12px); border: 1px solid var(--border-glass); border-radius: var(--radius-md); padding: 10px 14px; box-shadow: var(--shadow-lg); }
+.tooltip-label { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px; font-weight: 500; }
+.tooltip-value { font-size: 0.82rem; margin-top: 2px; }
+.tooltip-value strong { font-weight: 700; }
+
+/* Symptoms List */
+.symptoms-list { display: flex; flex-direction: column; gap: 14px; }
+.symptom-item { display: flex; align-items: center; gap: 12px; }
+.symptom-info { display: flex; align-items: center; gap: 8px; width: 160px; flex-shrink: 0; }
+.symptom-rank { font-size: 0.75rem; font-weight: 700; color: var(--accent-primary-light); width: 24px; }
+.symptom-name { font-size: 0.82rem; color: var(--text-secondary); }
+.symptom-bar-wrap { flex: 1; height: 8px; background: rgba(148,163,184,0.08); border-radius: var(--radius-full); overflow: hidden; }
+.symptom-bar { height: 100%; border-radius: var(--radius-full); transition: width 1s ease-out; }
+.symptom-count { font-size: 0.82rem; font-weight: 600; color: var(--text-primary); width: 40px; text-align: right; }
+
+/* Team Ranking */
+.team-ranking-table { overflow-x: auto; }
+.team-ranking-table .team-name { color: var(--text-primary) !important; font-weight: 500 !important; font-family: inherit !important; }
+.rank-badge { font-size: 0.9rem; }
+.perf-bar-track { width: 80px; height: 6px; background: rgba(148,163,184,0.1); border-radius: var(--radius-full); overflow: hidden; }
+.perf-bar-fill { height: 100%; border-radius: var(--radius-full); transition: width 1s ease-out; }
+
+@media (max-width: 1200px) { .exec-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 768px) {
+  .exec-grid { grid-template-columns: repeat(2, 1fr); }
+  .insights-grid { grid-template-columns: 1fr; }
+  .report-header-actions { flex-direction: column; }
+}
+
+/* ─── Print / PDF styles ─────────────────────────────────────────────────── */
+@media print {
+  .pdf-only-header { display: block !important; }
+  .sidebar, .page-header, .pdf-export-btn, .report-date-badge { display: none !important; }
+  .main-content { margin-left: 0 !important; padding: 0 !important; }
+  .glass-card { background: #111827 !important; border: 1px solid #1e293b !important; }
+}

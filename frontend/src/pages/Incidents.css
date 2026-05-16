@@ -1,0 +1,54 @@
+/* ─── Incidents Page ─────────────────────────────────────────────────────── */
+.incidents-page {
+  max-width: 1400px;
+}
+
+.incidents-filters {
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.filter-search {
+  display: flex;
+  gap: 10px;
+}
+
+.filter-search .input {
+  flex: 1;
+}
+
+.filter-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.filter-row .input {
+  flex: 1;
+  min-width: 150px;
+}
+
+.incidents-table-wrap {
+  padding: 0;
+  overflow: hidden;
+}
+
+.incidents-table-wrap .data-table-container {
+  padding: 0;
+}
+
+.incidents-table-wrap .pagination {
+  padding: 14px 18px;
+  border-top: 1px solid var(--border-glass);
+}
+
+@media (max-width: 768px) {
+  .filter-search {
+    flex-direction: column;
+  }
+  .filter-row {
+    flex-direction: column;
+  }
+}

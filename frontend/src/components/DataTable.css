@@ -1,0 +1,123 @@
+/* ─── Data Table ─────────────────────────────────────────────────────────── */
+.data-table-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.data-table-wrapper {
+  overflow-x: auto;
+  border-radius: var(--radius-lg);
+  max-height: 65vh;
+  overflow-y: auto;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.78rem;
+  table-layout: auto;
+}
+
+.data-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--table-header-bg);
+  backdrop-filter: blur(10px);
+  padding: 9px 10px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-glass);
+  white-space: nowrap;
+  user-select: none;
+  z-index: 2;
+}
+
+.data-table thead th.sortable {
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.data-table thead th.sortable:hover {
+  color: var(--accent-primary-light);
+}
+
+.th-content {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sort-indicator {
+  color: var(--accent-primary-light);
+  font-size: 0.8rem;
+}
+
+.data-table tbody tr {
+  transition: background var(--transition-fast);
+}
+
+.data-table tbody tr:hover {
+  background: var(--bg-glass-hover);
+}
+
+.data-table tbody td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border-glass);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.data-table tbody td:first-child {
+  color: var(--accent-primary-light);
+  font-weight: 600;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.72rem;
+}
+
+.table-loading, .table-empty {
+  text-align: center;
+  padding: 48px !important;
+  color: var(--text-muted);
+}
+
+.table-loading {
+  display: flex;
+  justify-content: center;
+}
+
+.text-muted {
+  color: var(--text-muted);
+}
+
+/* Pagination */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 8px 0;
+}
+
+.pagination-info {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.page-current {
+  font-weight: 700;
+  color: var(--accent-primary-light);
+}
+
+.pagination .btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
