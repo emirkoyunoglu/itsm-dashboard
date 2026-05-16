@@ -87,18 +87,19 @@ def generate_incident(incident_num, base_date):
     
     # Resolution time depends on priority
     priority_level = int(priority[0])
-    if priority_level == 1:
-        resolution_hours = random.uniform(0.5, 48)
-    elif priority_level == 2:
-        resolution_hours = random.uniform(1, 96)
-    elif priority_level == 3:
-        resolution_hours = random.uniform(2, 168)
-    else:
-        resolution_hours = random.uniform(4, 336)
-    
-    # SLA targets by priority
+    # SLA targets by priority (hours)
     sla_targets = {1: 4, 2: 24, 3: 72, 4: 168}
-    made_sla = resolution_hours <= sla_targets[priority_level]
+    target = sla_targets[priority_level]
+    
+    # ~75% of incidents should meet SLA (realistic enterprise target)
+    if random.random() < 0.75:
+        # Within SLA - resolution within target window
+        resolution_hours = round(random.uniform(0.5, target * 0.95), 1)
+    else:
+        # SLA breached - resolution exceeds target
+        resolution_hours = round(random.uniform(target * 1.05, target * 3), 1)
+    
+    made_sla = resolution_hours <= target
     
     # Determine final state
     is_resolved = random.random() < 0.92

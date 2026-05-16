@@ -436,33 +436,58 @@ def get_executive_summary():
     team_perf = team_perf.sort_values("sla_rate", ascending=False)
     
     # Insights & action items (auto-generated)
+    locale = request.args.get("locale", "tr")
     worst_sla_group = team_perf.iloc[-1]
     best_sla_group = team_perf.iloc[0]
     critical_count = int(df[df["priority"] == "1 - Critical"].shape[0])
     high_reopen = df[df["reopen_count"] > 1].shape[0]
     
-    insights = [
-        {
-            "type": "warning",
-            "title": "SLA Compliance Alert",
-            "description": f"{worst_sla_group['assignment_group']} has the lowest SLA compliance at {worst_sla_group['sla_rate']}%. Action plan needed."
-        },
-        {
-            "type": "success", 
-            "title": "Top Performing Team",
-            "description": f"{best_sla_group['assignment_group']} leads with {best_sla_group['sla_rate']}% SLA compliance and {best_sla_group['avg_resolution']}h avg resolution."
-        },
-        {
-            "type": "info",
-            "title": "Critical Incidents",
-            "description": f"{critical_count} critical incidents recorded ({round(critical_count/total*100, 1)}% of total). Monitor for recurring patterns."
-        },
-        {
-            "type": "warning",
-            "title": "High Reopen Rate",
-            "description": f"{high_reopen} incidents reopened more than once. Review root cause analysis process."
-        },
-    ]
+    if locale == "tr":
+        insights = [
+            {
+                "type": "warning",
+                "title": "SLA Uyum Uyarısı",
+                "description": f"{worst_sla_group['assignment_group']} ekibi %{worst_sla_group['sla_rate']} ile en düşük SLA uyumuna sahip. Aksiyon planı gerekli."
+            },
+            {
+                "type": "success", 
+                "title": "En Başarılı Ekip",
+                "description": f"{best_sla_group['assignment_group']} ekibi %{best_sla_group['sla_rate']} SLA uyumu ve {best_sla_group['avg_resolution']}s ortalama çözüm süresi ile lider."
+            },
+            {
+                "type": "info",
+                "title": "Kritik Olaylar",
+                "description": f"{critical_count} kritik olay kaydı (toplamın %{round(critical_count/total*100, 1)}'i). Tekrarlayan örüntüleri izleyin."
+            },
+            {
+                "type": "warning",
+                "title": "Yüksek Tekrar Açılma Oranı",
+                "description": f"{high_reopen} olay birden fazla kez yeniden açıldı. Kök neden analizi sürecini gözden geçirin."
+            },
+        ]
+    else:
+        insights = [
+            {
+                "type": "warning",
+                "title": "SLA Compliance Alert",
+                "description": f"{worst_sla_group['assignment_group']} has the lowest SLA compliance at {worst_sla_group['sla_rate']}%. Action plan needed."
+            },
+            {
+                "type": "success", 
+                "title": "Top Performing Team",
+                "description": f"{best_sla_group['assignment_group']} leads with {best_sla_group['sla_rate']}% SLA compliance and {best_sla_group['avg_resolution']}h avg resolution."
+            },
+            {
+                "type": "info",
+                "title": "Critical Incidents",
+                "description": f"{critical_count} critical incidents recorded ({round(critical_count/total*100, 1)}% of total). Monitor for recurring patterns."
+            },
+            {
+                "type": "warning",
+                "title": "High Reopen Rate",
+                "description": f"{high_reopen} incidents reopened more than once. Review root cause analysis process."
+            },
+        ]
     
     return jsonify({
         "overview": {

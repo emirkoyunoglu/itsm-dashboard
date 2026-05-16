@@ -34,6 +34,27 @@ function generateProfessionalPDF(report, t, locale) {
     const contentW = W - margin * 2
     let y = 0
 
+    // Load Roboto font for Turkish character support
+    try {
+      const fontResp = await fetch('/fonts/Roboto-Regular.ttf')
+      const fontBuf = await fontResp.arrayBuffer()
+      const bytes = new Uint8Array(fontBuf)
+      let binary = ''
+      const chunkSize = 8192
+      for (let i = 0; i < bytes.length; i += chunkSize) {
+        binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize))
+      }
+      const fontBase64 = btoa(binary)
+      doc.addFileToVFS('Roboto-Regular.ttf', fontBase64)
+      doc.addFont('Roboto-Regular.ttf', 'Roboto', 'normal')
+      doc.addFont('Roboto-Regular.ttf', 'Roboto', 'bold')
+      doc.setFont('Roboto')
+    } catch (e) {
+      console.warn('Roboto font load failed, falling back to helvetica', e)
+    }
+
+    const fontFamily = doc.getFontList()['Roboto'] ? 'Roboto' : 'helvetica'
+
     const colors = {
       primary: [99, 102, 241],
       dark: [15, 23, 42],
@@ -60,12 +81,12 @@ function generateProfessionalPDF(report, t, locale) {
     doc.rect(0, 55, W, 3, 'F')
 
     // Title
-    doc.setFont('helvetica', 'bold')
+    doc.setFont(fontFamily, 'bold')
     doc.setTextColor(...colors.white)
     doc.setFontSize(22)
     doc.text(t('pdfTitle'), W / 2, 28, { align: 'center' })
     doc.setFontSize(10)
-    doc.setFont('helvetica', 'normal')
+    doc.setFont(fontFamily, 'normal')
     doc.text(dateStr, W / 2, 38, { align: 'center' })
     doc.setFontSize(8)
     doc.text(t('pdfPrepared'), W / 2, 46, { align: 'center' })
@@ -78,11 +99,11 @@ function generateProfessionalPDF(report, t, locale) {
     doc.setDrawColor(...colors.border)
     doc.roundedRect(margin, y, contentW, 28, 3, 3, 'S')
 
-    doc.setFont('helvetica', 'bold')
+    doc.setFont(fontFamily, 'bold')
     doc.setTextColor(...colors.primary)
     doc.setFontSize(11)
     doc.text(t('pdfExecSummary'), margin + 8, y + 10)
-    doc.setFont('helvetica', 'normal')
+    doc.setFont(fontFamily, 'normal')
     doc.setTextColor(...colors.text)
     doc.setFontSize(8.5)
     doc.text(t('pdfExecDesc'), margin + 8, y + 19, { maxWidth: contentW - 16 })
@@ -90,7 +111,7 @@ function generateProfessionalPDF(report, t, locale) {
     y += 40
 
     // ─── KPI Section ───
-    doc.setFont('helvetica', 'bold')
+    doc.setFont(fontFamily, 'bold')
     doc.setTextColor(...colors.dark)
     doc.setFontSize(13)
     doc.text(t('pdfKpiTitle'), margin, y)
@@ -126,12 +147,12 @@ function generateProfessionalPDF(report, t, locale) {
       doc.setFillColor(...kpi.color)
       doc.rect(x, ky, 2.5, 24, 'F')
 
-      doc.setFont('helvetica', 'bold')
+      doc.setFont(fontFamily, 'bold')
       doc.setTextColor(...kpi.color)
       doc.setFontSize(16)
       doc.text(kpi.value, x + 10, ky + 11)
 
-      doc.setFont('helvetica', 'normal')
+      doc.setFont(fontFamily, 'normal')
       doc.setTextColor(...colors.muted)
       doc.setFontSize(7.5)
       doc.text(kpi.label, x + 10, ky + 19)
@@ -140,7 +161,7 @@ function generateProfessionalPDF(report, t, locale) {
     y += 68
 
     // ─── SLA Analysis ───
-    doc.setFont('helvetica', 'bold')
+    doc.setFont(fontFamily, 'bold')
     doc.setTextColor(...colors.dark)
     doc.setFontSize(13)
     doc.text(t('pdfSlaTitle'), margin, y)
@@ -173,7 +194,7 @@ function generateProfessionalPDF(report, t, locale) {
     // Header row
     doc.setFillColor(...colors.primary)
     doc.rect(margin, y, contentW, 8, 'F')
-    doc.setFont('helvetica', 'bold')
+    doc.setFont(fontFamily, 'bold')
     doc.setTextColor(...colors.white)
     doc.setFontSize(7.5)
     let tx = margin + 3
@@ -189,7 +210,7 @@ function generateProfessionalPDF(report, t, locale) {
       doc.setFillColor(...bgColor)
       doc.rect(margin, y, contentW, 7, 'F')
 
-      doc.setFont('helvetica', 'normal')
+      doc.setFont(fontFamily, 'normal')
       doc.setTextColor(...colors.text)
       doc.setFontSize(7.5)
 
@@ -201,12 +222,12 @@ function generateProfessionalPDF(report, t, locale) {
 
       const slaColor = t2.sla_rate >= 60 ? colors.emerald : colors.rose
       doc.setTextColor(...slaColor)
-      doc.setFont('helvetica', 'bold')
+      doc.setFont(fontFamily, 'bold')
       doc.text(`${t2.sla_rate}%`, tx, y + 5)
       tx += colWidths[2]
 
       doc.setTextColor(...colors.text)
-      doc.setFont('helvetica', 'normal')
+      doc.setFont(fontFamily, 'normal')
       doc.text(`${t2.avg_resolution}h`, tx, y + 5)
 
       y += 7
@@ -225,14 +246,14 @@ function generateProfessionalPDF(report, t, locale) {
     // Page 2 header bar
     doc.setFillColor(...colors.primary)
     doc.rect(0, 0, W, 12, 'F')
-    doc.setFont('helvetica', 'bold')
+    doc.setFont(fontFamily, 'bold')
     doc.setTextColor(...colors.white)
     doc.setFontSize(8)
     doc.text(t('pdfTitle'), margin, 8)
     doc.text(dateStr, W - margin, 8, { align: 'right' })
 
     // Insights Section
-    doc.setFont('helvetica', 'bold')
+    doc.setFont(fontFamily, 'bold')
     doc.setTextColor(...colors.dark)
     doc.setFontSize(13)
     doc.text(t('pdfInsightsTitle'), margin, y)
@@ -266,19 +287,19 @@ function generateProfessionalPDF(report, t, locale) {
 
       doc.setFillColor(...accentColor)
       doc.roundedRect(margin + 8, y + 3, 16, 5, 1, 1, 'F')
-      doc.setFont('helvetica', 'bold')
+      doc.setFont(fontFamily, 'bold')
       doc.setTextColor(...colors.white)
       doc.setFontSize(5.5)
       doc.text(typeLabel.toUpperCase(), margin + 16, y + 6.5, { align: 'center' })
 
       // Title
-      doc.setFont('helvetica', 'bold')
+      doc.setFont(fontFamily, 'bold')
       doc.setTextColor(...colors.dark)
       doc.setFontSize(9)
       doc.text(insight.title, margin + 28, y + 8)
 
       // Description
-      doc.setFont('helvetica', 'normal')
+      doc.setFont(fontFamily, 'normal')
       doc.setTextColor(...colors.muted)
       doc.setFontSize(7.5)
       doc.text(insight.description, margin + 8, y + 17, { maxWidth: contentW - 16 })
@@ -289,7 +310,7 @@ function generateProfessionalPDF(report, t, locale) {
     y += 8
 
     // Category Distribution
-    doc.setFont('helvetica', 'bold')
+    doc.setFont(fontFamily, 'bold')
     doc.setTextColor(...colors.dark)
     doc.setFontSize(13)
     doc.text(t('pdfCategoryTitle'), margin, y)
@@ -302,7 +323,7 @@ function generateProfessionalPDF(report, t, locale) {
     report.top_categories.forEach((cat, i) => {
       const barWidth = (cat.count / maxCatCount) * (contentW - 70)
 
-      doc.setFont('helvetica', 'normal')
+      doc.setFont(fontFamily, 'normal')
       doc.setTextColor(...colors.text)
       doc.setFontSize(8)
       doc.text(cat.category, margin, y + 4)
@@ -317,7 +338,7 @@ function generateProfessionalPDF(report, t, locale) {
       doc.roundedRect(margin + 42, y, barWidth, 6, 1.5, 1.5, 'F')
 
       // Count
-      doc.setFont('helvetica', 'bold')
+      doc.setFont(fontFamily, 'bold')
       doc.setTextColor(...colors.dark)
       doc.text(cat.count.toString(), W - margin, y + 4, { align: 'right' })
 
@@ -328,20 +349,20 @@ function generateProfessionalPDF(report, t, locale) {
 
     // Top Symptoms
     if (report.top_symptoms && report.top_symptoms.length > 0) {
-      doc.setFont('helvetica', 'bold')
+      doc.setFont(fontFamily, 'bold')
       doc.setTextColor(...colors.dark)
       doc.setFontSize(11)
       doc.text(locale === 'tr' ? 'En Çok Bildirilen Belirtiler' : 'Top Reported Symptoms', margin, y)
       y += 8
 
       report.top_symptoms.forEach((s, i) => {
-        doc.setFont('helvetica', 'normal')
+        doc.setFont(fontFamily, 'normal')
         doc.setTextColor(...colors.muted)
         doc.setFontSize(7.5)
         doc.text(`${i + 1}.`, margin, y + 3.5)
         doc.setTextColor(...colors.text)
         doc.text(s.symptom, margin + 8, y + 3.5)
-        doc.setFont('helvetica', 'bold')
+        doc.setFont(fontFamily, 'bold')
         doc.text(s.count.toString(), W - margin, y + 3.5, { align: 'right' })
         y += 7
       })
@@ -353,7 +374,7 @@ function generateProfessionalPDF(report, t, locale) {
       doc.setPage(p)
       doc.setDrawColor(...colors.border)
       doc.line(margin, H - 15, W - margin, H - 15)
-      doc.setFont('helvetica', 'normal')
+      doc.setFont(fontFamily, 'normal')
       doc.setTextColor(...colors.muted)
       doc.setFontSize(6.5)
       doc.text(t('pdfFooter'), margin, H - 10)
@@ -375,11 +396,11 @@ export default function Reports() {
   const [exporting, setExporting] = useState(false)
 
   useEffect(() => {
-    fetch(`${API}/reports/executive-summary`)
+    fetch(`${API}/reports/executive-summary?locale=${locale}`)
       .then(r => r.json())
       .then(data => { setReport(data); setLoading(false) })
       .catch(err => { console.error(err); setLoading(false) })
-  }, [])
+  }, [locale])
 
   const exportPDF = async () => {
     setExporting(true)
