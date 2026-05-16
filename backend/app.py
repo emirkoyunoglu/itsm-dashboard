@@ -5,11 +5,46 @@ Flask application serving incident data analytics for the dashboard frontend.
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 import pandas as pd
+import csv
 import os
 from datetime import datetime
 
 app = Flask(__name__)
 CORS(app)
+
+# ─── Constants for CRUD ──────────────────────────────────────────────────────
+
+PRIORITY_MATRIX = {
+    ("1 - High", "1 - High"): "1 - Critical",
+    ("1 - High", "2 - Medium"): "2 - High",
+    ("1 - High", "3 - Low"): "3 - Moderate",
+    ("2 - Medium", "1 - High"): "2 - High",
+    ("2 - Medium", "2 - Medium"): "3 - Moderate",
+    ("2 - Medium", "3 - Low"): "4 - Low",
+    ("3 - Low", "1 - High"): "3 - Moderate",
+    ("3 - Low", "2 - Medium"): "4 - Low",
+    ("3 - Low", "3 - Low"): "4 - Low",
+}
+
+SLA_TARGETS = {1: 4, 2: 24, 3: 72, 4: 168}  # hours by priority level
+
+SUBCATEGORIES = {
+    "Software": ["Application", "Operating System", "Email", "Office Suite", "ERP"],
+    "Hardware": ["Laptop", "Desktop", "Printer", "Monitor", "Peripheral"],
+    "Network": ["Connectivity", "VPN", "Firewall", "DNS", "Wireless"],
+    "Database": ["Performance", "Access", "Backup", "Replication", "Query"],
+    "Inquiry / Help": ["Password Reset", "Account Access", "How To", "Information", "Training"],
+}
+
+CSV_FIELDNAMES = [
+    "number", "incident_state", "active", "reassignment_count", "reopen_count",
+    "sys_mod_count", "made_sla", "caller_id", "opened_by", "opened_at",
+    "sys_created_by", "sys_created_at", "sys_updated_by", "sys_updated_at",
+    "contact_type", "location", "category", "subcategory", "u_symptom",
+    "impact", "urgency", "priority", "assignment_group", "assigned_to",
+    "knowledge", "u_priority_confirmation", "notify", "problem_id", "rfc",
+    "vendor", "caused_by", "close_code", "resolved_by", "resolved_at", "closed_at"
+]
 
 # ─── Data Loading ────────────────────────────────────────────────────────────
 
@@ -515,6 +550,198 @@ def get_executive_summary():
         "team_performance": team_perf.to_dict("records"),
         "insights": insights,
     })
+
+
+# ─── CRUD Endpoints ─────────────────────────────────────────────────────────
+
+def save_to_csv():
+    """Persist the current DataFrame back to CSV."""
+    df.to_csv(DATA_PATH, index=False, columns=CSV_FIELDNAMES)
+
+
+def next_incident_number():
+    """Generate the next INC number."""
+    nums = df["number"].str.extract(r"INC(\d+)")[0].astype(int)
+    return f"INC{nums.max() + 1:07d}"
+
+
+@app.route("/api/subcategories", methods=["GET"])
+def get_subcategories():
+    """Return subcategory mapping for forms."""
+    return jsonify(SUBCATEGORIES)
+
+
+@app.route("/api/incidents/<number>", methods=["GET"])
+def get_incident_detail(number):
+    """Return single incident detail."""
+    row = df[df["number"] == number]
+    if row.empty:
+        return jsonify({"error": "Incident not found"}), 404
+    record = row.iloc[0].to_dict()
+    # Convert timestamps to strings
+    for col in ["opened_at", "sys_created_at", "sys_updated_at", "resolved_at", "closed_at"]:
+        val = record.get(col)
+        if pd.notna(val) and hasattr(val, "isoformat"):
+            record[col] = val.isoformat()
+        elif pd.isna(val):
+            record[col] = None
+    # Convert numpy types
+    for k, v in record.items():
+        if hasattr(v, "item"):
+            record[k] = v.item()
+        if isinstance(v, float) and pd.isna(v):
+            record[k] = None
+    return jsonify(record)
+
+
+@app.route("/api/incidents", methods=["POST"])
+def create_incident():
+    """Create a new incident."""
+    global df
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    now = datetime.now()
+    now_str = now.strftime("%Y-%m-%d %H:%M:%S")
+
+    impact = data.get("impact", "2 - Medium")
+    urgency = data.get("urgency", "2 - Medium")
+    priority = PRIORITY_MATRIX.get((impact, urgency), "3 - Moderate")
+
+    inc_number = next_incident_number()
+
+    new_row = {
+        "number": inc_number,
+        "incident_state": "New",
+        "active": True,
+        "reassignment_count": 0,
+        "reopen_count": 0,
+        "sys_mod_count": 1,
+        "made_sla": True,
+        "caller_id": data.get("caller_id", ""),
+        "opened_by": data.get("opened_by", "Dashboard User"),
+        "opened_at": now_str,
+        "sys_created_by": "Dashboard User",
+        "sys_created_at": now_str,
+        "sys_updated_by": "Dashboard User",
+        "sys_updated_at": now_str,
+        "contact_type": data.get("contact_type", "Self Service"),
+        "location": data.get("location", ""),
+        "category": data.get("category", ""),
+        "subcategory": data.get("subcategory", ""),
+        "u_symptom": data.get("u_symptom", ""),
+        "impact": impact,
+        "urgency": urgency,
+        "priority": priority,
+        "assignment_group": data.get("assignment_group", ""),
+        "assigned_to": data.get("assigned_to", ""),
+        "knowledge": False,
+        "u_priority_confirmation": False,
+        "notify": "Send Email",
+        "problem_id": "",
+        "rfc": "",
+        "vendor": "",
+        "caused_by": "",
+        "close_code": "",
+        "resolved_by": "",
+        "resolved_at": "",
+        "closed_at": "",
+    }
+
+    # Append to DataFrame
+    new_df_row = pd.DataFrame([new_row])
+    for col in ["opened_at", "sys_created_at", "sys_updated_at"]:
+        new_df_row[col] = pd.to_datetime(new_df_row[col])
+    for col in ["resolved_at", "closed_at"]:
+        new_df_row[col] = pd.NaT
+    new_df_row["active"] = True
+    new_df_row["made_sla"] = True
+    new_df_row["knowledge"] = False
+    new_df_row["resolution_hours"] = pd.NA
+    new_df_row["opened_month"] = now.strftime("%Y-%m")
+    new_df_row["opened_week"] = str(pd.Timestamp(now).to_period("W"))
+    new_df_row["opened_date"] = now.strftime("%Y-%m-%d")
+    new_df_row["opened_hour"] = now.hour
+    new_df_row["opened_dayofweek"] = now.weekday()
+
+    df = pd.concat([df, new_df_row], ignore_index=True)
+    save_to_csv()
+
+    return jsonify({"message": "Incident created", "number": inc_number}), 201
+
+
+@app.route("/api/incidents/<number>", methods=["PUT"])
+def update_incident(number):
+    """Update an existing incident."""
+    global df
+    idx = df.index[df["number"] == number]
+    if idx.empty:
+        return jsonify({"error": "Incident not found"}), 404
+
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No data provided"}), 400
+
+    i = idx[0]
+    updatable = ["category", "subcategory", "u_symptom", "impact", "urgency",
+                 "assignment_group", "assigned_to", "location", "contact_type",
+                 "caller_id", "incident_state", "knowledge"]
+
+    for field in updatable:
+        if field in data:
+            df.at[i, field] = data[field]
+
+    # Recalculate priority if impact/urgency changed
+    if "impact" in data or "urgency" in data:
+        imp = df.at[i, "impact"]
+        urg = df.at[i, "urgency"]
+        df.at[i, "priority"] = PRIORITY_MATRIX.get((imp, urg), "3 - Moderate")
+
+    # Update active flag based on state
+    if "incident_state" in data:
+        state = data["incident_state"]
+        df.at[i, "active"] = state not in ("Resolved", "Closed")
+
+    df.at[i, "sys_updated_at"] = pd.Timestamp.now()
+    df.at[i, "sys_updated_by"] = "Dashboard User"
+    df.at[i, "sys_mod_count"] = int(df.at[i, "sys_mod_count"]) + 1
+
+    save_to_csv()
+    return jsonify({"message": "Incident updated", "number": number})
+
+
+@app.route("/api/incidents/<number>/resolve", methods=["POST"])
+def resolve_incident(number):
+    """Resolve an incident."""
+    global df
+    idx = df.index[df["number"] == number]
+    if idx.empty:
+        return jsonify({"error": "Incident not found"}), 404
+
+    data = request.get_json() or {}
+    i = idx[0]
+    now = pd.Timestamp.now()
+
+    df.at[i, "incident_state"] = "Resolved"
+    df.at[i, "active"] = False
+    df.at[i, "resolved_at"] = now
+    df.at[i, "resolved_by"] = data.get("resolved_by", "Dashboard User")
+    df.at[i, "close_code"] = data.get("close_code", "Solved (Permanently)")
+    df.at[i, "sys_updated_at"] = now
+    df.at[i, "sys_updated_by"] = "Dashboard User"
+
+    # Calculate resolution hours and SLA
+    opened = df.at[i, "opened_at"]
+    if pd.notna(opened):
+        hours = (now - pd.Timestamp(opened)).total_seconds() / 3600
+        df.at[i, "resolution_hours"] = round(hours, 1)
+        prio_level = int(str(df.at[i, "priority"])[0])
+        target = SLA_TARGETS.get(prio_level, 72)
+        df.at[i, "made_sla"] = hours <= target
+
+    save_to_csv()
+    return jsonify({"message": "Incident resolved", "number": number})
 
 
 # ─── Run ─────────────────────────────────────────────────────────────────────

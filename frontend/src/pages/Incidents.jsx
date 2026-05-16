@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import DataTable from '../components/DataTable'
 import DateRangePicker from '../components/DateRangePicker'
+import IncidentForm from '../components/IncidentForm'
 import { useI18n } from '../I18nContext'
 import { useDateRange } from '../DateRangeContext'
 import './Incidents.css'
@@ -37,11 +38,16 @@ export default function Incidents() {
   const [sortBy, setSortBy] = useState('opened_at')
   const [sortOrder, setSortOrder] = useState('desc')
 
+  // Modal state
+  const [showForm, setShowForm] = useState(false)
+  const [formMode, setFormMode] = useState('create')
+  const [editNumber, setEditNumber] = useState(null)
+
   useEffect(() => {
     fetch(`${API}/filters`).then(r => r.json()).then(setFilters).catch(console.error)
   }, [])
 
-  useEffect(() => {
+  const fetchIncidents = useCallback(() => {
     setLoading(true)
     const params = new URLSearchParams({
       page, per_page: 20, search, priority, category, status, location,
@@ -60,6 +66,8 @@ export default function Incidents() {
       .catch(err => { console.error(err); setLoading(false) })
   }, [page, search, priority, category, status, location, sortBy, sortOrder, startDate, endDate])
 
+  useEffect(() => { fetchIncidents() }, [fetchIncidents])
+
   const handleSort = (col) => {
     if (sortBy === col) { setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc') }
     else { setSortBy(col); setSortOrder('asc') }
@@ -70,6 +78,9 @@ export default function Incidents() {
   const clearFilters = () => { setSearch(''); setSearchInput(''); setPriority(''); setCategory(''); setStatus(''); setLocation(''); setPage(1) }
   const hasFilters = search || priority || category || status || location
 
+  const openCreate = () => { setFormMode('create'); setEditNumber(null); setShowForm(true) }
+  const openEdit = (row) => { setFormMode('edit'); setEditNumber(row.number); setShowForm(true) }
+
   return (
     <div className="incidents-page animate-fade-in">
       <div className="page-header">
@@ -77,7 +88,12 @@ export default function Incidents() {
           <h1>{t('incidentMgmt')}</h1>
           <p>{t('incidentMgmtSub')} • {total.toLocaleString()} {t('totalRecords')}</p>
         </div>
-        <DateRangePicker startDate={startDate} endDate={endDate} onChange={setDates} dateRange={dateRange} />
+        <div className="header-actions">
+          <button className="btn btn-primary new-incident-btn" onClick={openCreate}>
+            {t('addNewIncident')}
+          </button>
+          <DateRangePicker startDate={startDate} endDate={endDate} onChange={setDates} dateRange={dateRange} />
+        </div>
       </div>
 
       <div className="incidents-filters glass-card">
@@ -109,8 +125,18 @@ export default function Incidents() {
 
       <div className="incidents-table-wrap glass-card mt-4">
         <DataTable columns={COLUMNS} data={incidents} page={page} totalPages={totalPages}
-          onPageChange={setPage} onSort={handleSort} sortBy={sortBy} sortOrder={sortOrder} loading={loading} />
+          onPageChange={setPage} onSort={handleSort} sortBy={sortBy} sortOrder={sortOrder}
+          loading={loading} onRowClick={openEdit} />
       </div>
+
+      {showForm && (
+        <IncidentForm
+          mode={formMode}
+          incidentNumber={editNumber}
+          onClose={() => setShowForm(false)}
+          onSaved={fetchIncidents}
+        />
+      )}
     </div>
   )
 }

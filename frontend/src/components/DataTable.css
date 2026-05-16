@@ -121,3 +121,11 @@
   opacity: 0.3;
   cursor: not-allowed;
 }
+
+/* Clickable rows */
+.data-table .clickable-row {
+  cursor: pointer;
+  transition: background 0.15s;
+}
+[data-theme="dark"] .data-table .clickable-row:hover { background: rgba(99,102,241,0.08); }
+[data-theme="light"] .data-table .clickable-row:hover { background: rgba(99,102,241,0.04); }

@@ -30,7 +30,8 @@ export default function DataTable({
   onSort,
   sortBy,
   sortOrder,
-  loading = false 
+  loading = false,
+  onRowClick,
 }) {
   const renderCell = (row, col) => {
     const value = row[col.key]
@@ -94,7 +95,9 @@ export default function DataTable({
               </tr>
             ) : (
               data.map((row, i) => (
-                <tr key={row.number || i} className="animate-fade-in" style={{ animationDelay: `${i * 20}ms` }}>
+                <tr key={row.number || i} className={`animate-fade-in ${onRowClick ? 'clickable-row' : ''}`}
+                  style={{ animationDelay: `${i * 20}ms` }}
+                  onClick={() => onRowClick?.(row)}>
                   {columns.map((col) => (
                     <td key={col.key}>{renderCell(row, col)}</td>
                   ))}
