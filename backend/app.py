@@ -45,40 +45,50 @@ def load_data():
 df = load_data()
 
 
+def filter_by_date(dataframe):
+    """Filter dataframe by start_date and end_date query parameters."""
+    start = request.args.get("start_date")
+    end = request.args.get("end_date")
+    filtered = dataframe
+    if start:
+        filtered = filtered[filtered["opened_at"] >= pd.to_datetime(start)]
+    if end:
+        filtered = filtered[filtered["opened_at"] <= pd.to_datetime(end) + pd.Timedelta(days=1)]
+    return filtered
+
+
 # ─── API Endpoints ───────────────────────────────────────────────────────────
 
 @app.route("/api/summary", methods=["GET"])
 def get_summary():
     """Return high-level KPI summary metrics."""
-    total = len(df)
-    active_count = int(df["active"].sum())
-    resolved_count = int((~df["active"]).sum())
+    fdf = filter_by_date(df)
+    total = len(fdf)
+    if total == 0:
+        return jsonify({"total_incidents": 0, "active_incidents": 0, "resolved_incidents": 0, "avg_resolution_hours": 0, "median_resolution_hours": 0, "sla_compliance_rate": 0, "sla_met_count": 0, "reopen_rate": 0, "reassignment_rate": 0, "knowledge_usage_rate": 0, "priority_breakdown": {}, "monthly_trend": []})
+    active_count = int(fdf["active"].sum())
+    resolved_count = int((~fdf["active"]).sum())
     
-    resolved_df = df[df["resolution_hours"].notna()]
+    resolved_df = fdf[fdf["resolution_hours"].notna()]
     avg_resolution = round(resolved_df["resolution_hours"].mean(), 1) if len(resolved_df) > 0 else 0
     median_resolution = round(resolved_df["resolution_hours"].median(), 1) if len(resolved_df) > 0 else 0
     
-    sla_met = int(df["made_sla"].sum())
+    sla_met = int(fdf["made_sla"].sum())
     sla_rate = round((sla_met / total) * 100, 1) if total > 0 else 0
     
-    # Priority breakdown
-    priority_counts = df["priority"].value_counts().to_dict()
+    priority_counts = fdf["priority"].value_counts().to_dict()
     
-    # Reopen & reassignment rates
-    reopened = int((df["reopen_count"] > 0).sum())
+    reopened = int((fdf["reopen_count"] > 0).sum())
     reopen_rate = round((reopened / total) * 100, 1)
     
-    reassigned = int((df["reassignment_count"] > 0).sum())
+    reassigned = int((fdf["reassignment_count"] > 0).sum())
     reassignment_rate = round((reassigned / total) * 100, 1)
     
-    # Knowledge usage
-    knowledge_used = int(df["knowledge"].sum())
+    knowledge_used = int(fdf["knowledge"].sum())
     knowledge_rate = round((knowledge_used / total) * 100, 1)
     
-    # Monthly incident count for sparkline (exclude current incomplete month)
     current_month = datetime.now().strftime("%Y-%m")
-    completed = df[df["opened_month"] != current_month]
-    # Also exclude last month if it's incomplete (< 50% of median)
+    completed = fdf[fdf["opened_month"] != current_month]
     month_counts = completed.groupby("opened_month").size()
     if len(month_counts) > 2:
         median_count = month_counts.iloc[:-1].median()
@@ -117,7 +127,7 @@ def get_incidents():
     sort_by = request.args.get("sort_by", "opened_at")
     sort_order = request.args.get("sort_order", "desc")
     
-    filtered = df.copy()
+    filtered = filter_by_date(df)
     
     if search:
         mask = (
@@ -196,7 +206,7 @@ def get_trends():
     
     # Exclude current (incomplete) month for monthly granularity
     # Also exclude the last month in data if it has significantly fewer incidents (partial data)
-    working_df = df.copy()
+    working_df = filter_by_date(df)
     if granularity == "monthly":
         current_month = datetime.now().strftime("%Y-%m")
         working_df = working_df[working_df["opened_month"] != current_month]
@@ -232,11 +242,11 @@ def get_trends():
 @app.route("/api/priority-distribution", methods=["GET"])
 def get_priority_distribution():
     """Return priority distribution data."""
-    dist = df["priority"].value_counts().reset_index()
+    fdf = filter_by_date(df)
+    dist = fdf["priority"].value_counts().reset_index()
     dist.columns = ["priority", "count"]
     
-    # Also get SLA compliance by priority
-    sla_by_priority = df.groupby("priority")["made_sla"].mean().reset_index()
+    sla_by_priority = fdf.groupby("priority")["made_sla"].mean().reset_index()
     sla_by_priority["made_sla"] = (sla_by_priority["made_sla"] * 100).round(1)
     sla_by_priority.columns = ["priority", "sla_rate"]
     
@@ -248,7 +258,8 @@ def get_priority_distribution():
 @app.route("/api/category-analysis", methods=["GET"])
 def get_category_analysis():
     """Return category-based incident analysis."""
-    cat_counts = df.groupby(["category", "subcategory"]).agg(
+    fdf = filter_by_date(df)
+    cat_counts = fdf.groupby(["category", "subcategory"]).agg(
         count=("number", "size"),
         avg_resolution=("resolution_hours", "mean"),
         sla_rate=("made_sla", "mean"),
@@ -257,8 +268,7 @@ def get_category_analysis():
     cat_counts["avg_resolution"] = cat_counts["avg_resolution"].round(1)
     cat_counts["sla_rate"] = (cat_counts["sla_rate"] * 100).round(1)
     
-    # Category level summary
-    cat_summary = df.groupby("category").agg(
+    cat_summary = fdf.groupby("category").agg(
         count=("number", "size"),
         avg_resolution=("resolution_hours", "mean"),
         sla_rate=("made_sla", "mean"),
@@ -275,21 +285,19 @@ def get_category_analysis():
 @app.route("/api/sla-performance", methods=["GET"])
 def get_sla_performance():
     """Return SLA performance metrics."""
-    # Overall SLA
-    total = len(df)
-    met = int(df["made_sla"].sum())
+    fdf = filter_by_date(df)
+    total = len(fdf)
+    met = int(fdf["made_sla"].sum())
     breached = total - met
     
-    # SLA by priority
-    sla_priority = df.groupby("priority").agg(
+    sla_priority = fdf.groupby("priority").agg(
         total=("number", "size"),
         met=("made_sla", "sum"),
     ).reset_index()
     sla_priority["breached"] = sla_priority["total"] - sla_priority["met"]
     sla_priority["rate"] = (sla_priority["met"] / sla_priority["total"] * 100).round(1)
     
-    # SLA by assignment group
-    sla_group = df.groupby("assignment_group").agg(
+    sla_group = fdf.groupby("assignment_group").agg(
         total=("number", "size"),
         met=("made_sla", "sum"),
         avg_resolution=("resolution_hours", "mean"),
@@ -297,8 +305,7 @@ def get_sla_performance():
     sla_group["rate"] = (sla_group["met"] / sla_group["total"] * 100).round(1)
     sla_group["avg_resolution"] = sla_group["avg_resolution"].round(1)
     
-    # SLA by location
-    sla_location = df.groupby("location").agg(
+    sla_location = fdf.groupby("location").agg(
         total=("number", "size"),
         met=("made_sla", "sum"),
     ).reset_index()
@@ -315,7 +322,8 @@ def get_sla_performance():
 @app.route("/api/assignment-groups", methods=["GET"])
 def get_assignment_groups():
     """Return assignment group performance data."""
-    group_data = df.groupby("assignment_group").agg(
+    fdf = filter_by_date(df)
+    group_data = fdf.groupby("assignment_group").agg(
         total_incidents=("number", "size"),
         active_incidents=("active", "sum"),
         avg_resolution_hours=("resolution_hours", "mean"),
@@ -340,21 +348,19 @@ def get_assignment_groups():
 @app.route("/api/resolution-analysis", methods=["GET"])
 def get_resolution_analysis():
     """Return resolution time analysis data."""
-    resolved = df[df["resolution_hours"].notna()].copy()
+    fdf = filter_by_date(df)
+    resolved = fdf[fdf["resolution_hours"].notna()].copy()
     
-    # Resolution time distribution (histogram buckets)
     bins = [0, 1, 4, 8, 24, 48, 72, 168, 336, float("inf")]
     labels = ["<1h", "1-4h", "4-8h", "8-24h", "1-2d", "2-3d", "3-7d", "7-14d", ">14d"]
     resolved["time_bucket"] = pd.cut(resolved["resolution_hours"], bins=bins, labels=labels)
     histogram = resolved["time_bucket"].value_counts().sort_index().reset_index()
     histogram.columns = ["bucket", "count"]
     
-    # Close code distribution
     close_codes = resolved["close_code"].value_counts().reset_index()
     close_codes.columns = ["close_code", "count"]
     
-    # Contact type analysis
-    contact = df.groupby("contact_type").agg(
+    contact = fdf.groupby("contact_type").agg(
         count=("number", "size"),
         avg_resolution=("resolution_hours", "mean"),
     ).reset_index()
@@ -370,7 +376,8 @@ def get_resolution_analysis():
 @app.route("/api/heatmap", methods=["GET"])
 def get_heatmap():
     """Return hour/day heatmap data for incident volume."""
-    heatmap = df.groupby(["opened_dayofweek", "opened_hour"]).size().reset_index(name="count")
+    fdf = filter_by_date(df)
+    heatmap = fdf.groupby(["opened_dayofweek", "opened_hour"]).size().reset_index(name="count")
     heatmap.columns = ["day", "hour", "count"]
     
     day_names = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
@@ -388,19 +395,24 @@ def get_filters():
         "statuses": sorted(df["incident_state"].unique().tolist()),
         "locations": sorted(df["location"].unique().tolist()),
         "assignment_groups": sorted(df["assignment_group"].unique().tolist()),
+        "date_range": {
+            "min": df["opened_at"].min().strftime("%Y-%m-%d"),
+            "max": df["opened_at"].max().strftime("%Y-%m-%d"),
+        },
     })
 
 
 @app.route("/api/reports/executive-summary", methods=["GET"])
 def get_executive_summary():
     """Return executive summary report data."""
-    total = len(df)
-    resolved = df[~df["active"]]
-    active = df[df["active"]]
+    fdf = filter_by_date(df)
+    total = len(fdf)
+    resolved = fdf[~fdf["active"]]
+    active = fdf[fdf["active"]]
     
     # Monthly comparisons — exclude current incomplete month
     current_month = datetime.now().strftime("%Y-%m")
-    completed_df = df[df["opened_month"] != current_month]
+    completed_df = fdf[fdf["opened_month"] != current_month]
     # Exclude last month if incomplete (< 50% of median)
     mc = completed_df.groupby("opened_month").size()
     if len(mc) > 2:
@@ -419,14 +431,13 @@ def get_executive_summary():
     monthly["avg_resolution"] = monthly["avg_resolution"].round(1)
     
     # Top issues
-    top_categories = df["category"].value_counts().head(5).reset_index()
+    top_categories = fdf["category"].value_counts().head(5).reset_index()
     top_categories.columns = ["category", "count"]
     
-    top_symptoms = df["u_symptom"].value_counts().head(5).reset_index()
+    top_symptoms = fdf["u_symptom"].value_counts().head(5).reset_index()
     top_symptoms.columns = ["symptom", "count"]
     
-    # Team performance ranking
-    team_perf = df.groupby("assignment_group").agg(
+    team_perf = fdf.groupby("assignment_group").agg(
         incidents=("number", "size"),
         sla_rate=("made_sla", "mean"),
         avg_resolution=("resolution_hours", "mean"),
@@ -439,8 +450,8 @@ def get_executive_summary():
     locale = request.args.get("locale", "tr")
     worst_sla_group = team_perf.iloc[-1]
     best_sla_group = team_perf.iloc[0]
-    critical_count = int(df[df["priority"] == "1 - Critical"].shape[0])
-    high_reopen = df[df["reopen_count"] > 1].shape[0]
+    critical_count = int(fdf[fdf["priority"] == "1 - Critical"].shape[0])
+    high_reopen = fdf[fdf["reopen_count"] > 1].shape[0]
     
     if locale == "tr":
         insights = [
@@ -495,8 +506,8 @@ def get_executive_summary():
             "resolved_count": len(resolved),
             "active_count": len(active),
             "resolution_rate": round(len(resolved) / total * 100, 1),
-            "overall_sla": round(df["made_sla"].mean() * 100, 1),
-            "avg_resolution": round(df["resolution_hours"].mean(), 1),
+            "overall_sla": round(fdf["made_sla"].mean() * 100, 1),
+            "avg_resolution": round(fdf["resolution_hours"].mean(), 1),
         },
         "monthly_data": monthly.to_dict("records"),
         "top_categories": top_categories.to_dict("records"),

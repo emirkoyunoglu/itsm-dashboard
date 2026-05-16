@@ -120,6 +120,12 @@ const translations = {
 
     // Days
     mon: 'Pzt', tue: 'Sal', wed: 'Çar', thu: 'Per', fri: 'Cum', sat: 'Cmt', sun: 'Paz',
+
+    // Date range
+    allDates: 'Tüm Tarihler',
+    startDate: 'Başlangıç',
+    endDate: 'Bitiş',
+    applyFilter: 'Uygula',
   },
   en: {
     mainMenu: 'Main Menu',
@@ -225,6 +231,10 @@ const translations = {
     insightSuccess: 'Success',
     insightInfo: 'Info',
     mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun',
+    allDates: 'All Dates',
+    startDate: 'Start',
+    endDate: 'End',
+    applyFilter: 'Apply',
   }
 }
 

@@ -5,7 +5,9 @@ import {
 } from 'recharts'
 import KPICard from '../components/KPICard'
 import ChartCard from '../components/ChartCard'
+import DateRangePicker from '../components/DateRangePicker'
 import { useI18n } from '../I18nContext'
+import { useDateRange } from '../DateRangeContext'
 import './Dashboard.css'
 
 const API = 'http://localhost:5000/api'
@@ -27,6 +29,7 @@ const CustomTooltip = ({ active, payload, label }) => {
 
 export default function Dashboard() {
   const { t } = useI18n()
+  const { startDate, endDate, dateRange, setDates, dateParams } = useDateRange()
   const [summary, setSummary] = useState(null)
   const [trends, setTrends] = useState([])
   const [priorityDist, setPriorityDist] = useState([])
@@ -34,11 +37,14 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    const dp = dateParams()
+    const qs = dp ? `&${dp}` : ''
+    const qs2 = dp ? `?${dp}` : ''
     Promise.all([
-      fetch(`${API}/summary`).then(r => r.json()),
-      fetch(`${API}/trends?granularity=monthly`).then(r => r.json()),
-      fetch(`${API}/priority-distribution`).then(r => r.json()),
-      fetch(`${API}/category-analysis`).then(r => r.json()),
+      fetch(`${API}/summary${qs2}`).then(r => r.json()),
+      fetch(`${API}/trends?granularity=monthly${qs}`).then(r => r.json()),
+      fetch(`${API}/priority-distribution${qs2}`).then(r => r.json()),
+      fetch(`${API}/category-analysis${qs2}`).then(r => r.json()),
     ]).then(([sum, trend, prio, cat]) => {
       setSummary(sum)
       setTrends(trend)
@@ -49,7 +55,7 @@ export default function Dashboard() {
       console.error('Failed to fetch dashboard data:', err)
       setLoading(false)
     })
-  }, [])
+  }, [startDate, endDate])
 
   if (loading) return <div className="loading-container"><div className="loading-spinner" /></div>
   if (!summary) return null
@@ -57,8 +63,11 @@ export default function Dashboard() {
   return (
     <div className="dashboard-page animate-fade-in">
       <div className="page-header">
-        <h1>{t('dashTitle')}</h1>
-        <p>{t('dashSubtitle')}</p>
+        <div>
+          <h1>{t('dashTitle')}</h1>
+          <p>{t('dashSubtitle')}</p>
+        </div>
+        <DateRangePicker startDate={startDate} endDate={endDate} onChange={setDates} dateRange={dateRange} />
       </div>
 
       {/* KPI Cards */}

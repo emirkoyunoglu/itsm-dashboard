@@ -5,7 +5,9 @@ import {
   PolarRadiusAxis, Radar, Legend, ComposedChart, Line, Cell
 } from 'recharts'
 import ChartCard from '../components/ChartCard'
+import DateRangePicker from '../components/DateRangePicker'
 import { useI18n } from '../I18nContext'
+import { useDateRange } from '../DateRangeContext'
 import './Analytics.css'
 
 const API = 'http://localhost:5000/api'
@@ -27,6 +29,7 @@ const CustomTooltip = ({ active, payload, label }) => {
 
 export default function Analytics() {
   const { t } = useI18n()
+  const { startDate, endDate, dateRange, setDates, dateParams } = useDateRange()
   const [slaData, setSlaData] = useState(null)
   const [groupData, setGroupData] = useState([])
   const [resolutionData, setResolutionData] = useState(null)
@@ -34,15 +37,17 @@ export default function Analytics() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    const dp = dateParams()
+    const qs = dp ? `?${dp}` : ''
     Promise.all([
-      fetch(`${API}/sla-performance`).then(r => r.json()),
-      fetch(`${API}/assignment-groups`).then(r => r.json()),
-      fetch(`${API}/resolution-analysis`).then(r => r.json()),
-      fetch(`${API}/heatmap`).then(r => r.json()),
+      fetch(`${API}/sla-performance${qs}`).then(r => r.json()),
+      fetch(`${API}/assignment-groups${qs}`).then(r => r.json()),
+      fetch(`${API}/resolution-analysis${qs}`).then(r => r.json()),
+      fetch(`${API}/heatmap${qs}`).then(r => r.json()),
     ]).then(([sla, groups, resolution, heatmap]) => {
       setSlaData(sla); setGroupData(groups); setResolutionData(resolution); setHeatmapData(heatmap); setLoading(false)
     }).catch(err => { console.error(err); setLoading(false) })
-  }, [])
+  }, [startDate, endDate])
 
   if (loading) return <div className="loading-container"><div className="loading-spinner" /></div>
 
@@ -69,8 +74,11 @@ export default function Analytics() {
   return (
     <div className="analytics-page animate-fade-in">
       <div className="page-header">
-        <h1>{t('analyticsTitle')}</h1>
-        <p>{t('analyticsSub')}</p>
+        <div>
+          <h1>{t('analyticsTitle')}</h1>
+          <p>{t('analyticsSub')}</p>
+        </div>
+        <DateRangePicker startDate={startDate} endDate={endDate} onChange={setDates} dateRange={dateRange} />
       </div>
 
       {/* SLA Overview */}

@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import DataTable from '../components/DataTable'
+import DateRangePicker from '../components/DateRangePicker'
 import { useI18n } from '../I18nContext'
+import { useDateRange } from '../DateRangeContext'
 import './Incidents.css'
 
 const API = 'http://localhost:5000/api'
@@ -19,6 +21,7 @@ const COLUMNS = [
 
 export default function Incidents() {
   const { t } = useI18n()
+  const { startDate, endDate, dateRange, setDates, dateParams } = useDateRange()
   const [incidents, setIncidents] = useState([])
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
@@ -44,6 +47,8 @@ export default function Incidents() {
       page, per_page: 20, search, priority, category, status, location,
       sort_by: sortBy, sort_order: sortOrder,
     })
+    if (startDate) params.set('start_date', startDate)
+    if (endDate) params.set('end_date', endDate)
     fetch(`${API}/incidents?${params}`)
       .then(r => r.json())
       .then(data => {
@@ -53,7 +58,7 @@ export default function Incidents() {
         setLoading(false)
       })
       .catch(err => { console.error(err); setLoading(false) })
-  }, [page, search, priority, category, status, location, sortBy, sortOrder])
+  }, [page, search, priority, category, status, location, sortBy, sortOrder, startDate, endDate])
 
   const handleSort = (col) => {
     if (sortBy === col) { setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc') }
@@ -68,8 +73,11 @@ export default function Incidents() {
   return (
     <div className="incidents-page animate-fade-in">
       <div className="page-header">
-        <h1>{t('incidentMgmt')}</h1>
-        <p>{t('incidentMgmtSub')} • {total.toLocaleString()} {t('totalRecords')}</p>
+        <div>
+          <h1>{t('incidentMgmt')}</h1>
+          <p>{t('incidentMgmtSub')} • {total.toLocaleString()} {t('totalRecords')}</p>
+        </div>
+        <DateRangePicker startDate={startDate} endDate={endDate} onChange={setDates} dateRange={dateRange} />
       </div>
 
       <div className="incidents-filters glass-card">

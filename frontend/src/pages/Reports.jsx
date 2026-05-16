@@ -4,7 +4,9 @@ import {
   ResponsiveContainer, LineChart, Line, Legend, Cell
 } from 'recharts'
 import ChartCard from '../components/ChartCard'
+import DateRangePicker from '../components/DateRangePicker'
 import { useI18n } from '../I18nContext'
+import { useDateRange } from '../DateRangeContext'
 import './Reports.css'
 
 const API = 'http://localhost:5000/api'
@@ -391,16 +393,19 @@ function generateProfessionalPDF(report, t, locale) {
 /* ────────────────── Reports Component ──────────────────── */
 export default function Reports() {
   const { t, locale } = useI18n()
+  const { startDate, endDate, dateRange, setDates, dateParams } = useDateRange()
   const [report, setReport] = useState(null)
   const [loading, setLoading] = useState(true)
   const [exporting, setExporting] = useState(false)
 
   useEffect(() => {
-    fetch(`${API}/reports/executive-summary?locale=${locale}`)
+    const dp = dateParams()
+    const extra = dp ? `&${dp}` : ''
+    fetch(`${API}/reports/executive-summary?locale=${locale}${extra}`)
       .then(r => r.json())
       .then(data => { setReport(data); setLoading(false) })
       .catch(err => { console.error(err); setLoading(false) })
-  }, [locale])
+  }, [locale, startDate, endDate])
 
   const exportPDF = async () => {
     setExporting(true)
@@ -426,10 +431,7 @@ export default function Reports() {
             <p>{t('execReportSub')}</p>
           </div>
           <div className="report-header-actions">
-            <div className="report-date-badge">
-              <span>📅</span>
-              <span>{new Date().toLocaleDateString(locale === 'tr' ? 'tr-TR' : 'en-US', { month: 'long', year: 'numeric' })}</span>
-            </div>
+            <DateRangePicker startDate={startDate} endDate={endDate} onChange={setDates} dateRange={dateRange} />
             <button className="btn btn-primary pdf-export-btn" onClick={exportPDF} disabled={exporting}>
               {exporting ? <><div className="btn-spinner" /> {t('generating')}</> : t('exportPdf')}
             </button>
